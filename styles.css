@@ -1,0 +1,331 @@
+/* Team Collaboration Plugin Styles - 兼容不同主题 */
+
+/* CSS 变量回退，避免部分主题未定义导致样式异常 */
+:root {
+    --team-text-muted: var(--text-muted, #6b7280);
+    --team-border: var(--background-modifier-border, rgba(0, 0, 0, 0.1));
+    --team-hover: var(--background-modifier-hover, rgba(0, 0, 0, 0.05));
+    --team-accent: var(--interactive-accent, #7c3aed);
+}
+
+/* 暗色主题回退 */
+.theme-dark .team-view,
+body.theme-dark .team-view {
+    --team-text-muted: var(--text-muted, #9ca3af);
+    --team-border: var(--background-modifier-border, rgba(255, 255, 255, 0.1));
+    --team-hover: var(--background-modifier-hover, rgba(255, 255, 255, 0.05));
+}
+
+/* Team View */
+.team-view {
+    padding: 10px;
+    min-width: 0; /* 允许 flex 子项正确收缩 */
+}
+
+.team-view-header {
+    margin-bottom: 15px;
+    border-bottom: 1px solid var(--team-border);
+    padding-bottom: 10px;
+}
+
+.team-view-header h4 {
+    margin: 0;
+}
+
+.team-current-user {
+    font-size: 0.85em;
+    color: var(--team-text-muted);
+    margin-top: 2px;
+}
+
+.team-view-empty {
+    color: var(--team-text-muted);
+    text-align: center;
+    padding: 20px;
+}
+
+/* Team Selector */
+.team-selector {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid var(--team-border);
+}
+
+.team-select {
+    flex: 1;
+    min-width: 0;
+}
+
+.team-create-btn {
+    padding: 4px 12px;
+    flex-shrink: 0;
+}
+
+/* Team Invitations */
+.team-invitations {
+    background-color: var(--background-secondary, #f9fafb);
+    border: 1px solid var(--color-accent, var(--team-accent));
+    border-radius: 6px;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.team-invitations h5 {
+    margin: 0 0 10px 0;
+    color: var(--color-accent, var(--team-accent));
+    font-size: 0.9em;
+}
+
+.invitation-item {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 8px;
+    background-color: var(--background-primary, #fff);
+    border-radius: 4px;
+    margin-bottom: 8px;
+    font-size: 0.85em;
+}
+
+.invitation-item:last-child {
+    margin-bottom: 0;
+}
+
+.invitation-actions {
+    display: flex;
+    gap: 8px;
+    justify-content: flex-end;
+}
+
+.invitation-actions .accept-btn {
+    background-color: var(--color-green);
+    color: white;
+}
+
+.invitation-actions .reject-btn {
+    background-color: var(--background-modifier-error, #dc2626);
+    color: white;
+}
+
+/* Members Section */
+.team-members {
+    margin-bottom: 20px;
+}
+
+.team-members h5 {
+    margin: 0 0 10px 0;
+    font-size: 0.9em;
+    color: var(--team-text-muted);
+}
+
+.member-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.member-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.member-item:hover {
+    background-color: var(--team-hover);
+}
+
+.member-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--interactive-accent, var(--team-accent));
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+}
+
+.member-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.member-name {
+    font-weight: 500;
+}
+
+.member-role {
+    font-size: 0.8em;
+    color: var(--team-text-muted);
+}
+
+.team-invite-btn {
+    width: 100%;
+    margin-top: 10px;
+}
+
+/* Team Drive / Shared Documents Section */
+.team-drive,
+.team-docs {
+    margin-bottom: 20px;
+}
+
+.team-drive h5,
+.team-docs h5 {
+    margin: 0 0 10px 0;
+    font-size: 0.9em;
+    color: var(--team-text-muted);
+}
+
+.team-new-doc-btn {
+    width: 100%;
+    margin-bottom: 10px;
+    padding: 8px 12px;
+}
+
+.doc-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.doc-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    min-width: 0; /* 允许子项收缩，避免长文件名撑破布局 */
+}
+
+.doc-item:hover {
+    background-color: var(--team-hover);
+}
+
+.doc-item .doc-item-left {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    overflow: hidden;
+}
+
+.doc-icon {
+    flex-shrink: 0;
+}
+
+.doc-title {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.doc-item .doc-item-right {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.doc-editor {
+    font-size: 0.8em;
+    color: var(--team-text-muted);
+    margin-right: 8px;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.doc-hist-btn,
+.doc-del-btn {
+    padding: 4px 8px;
+    min-width: 28px;
+    min-height: 28px;
+    border-radius: 4px;
+    border: 1px solid var(--team-border);
+    background: var(--background-secondary, #f3f4f6);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.doc-hist-btn:hover,
+.doc-del-btn:hover {
+    background-color: var(--team-hover);
+}
+
+.empty-message,
+.error-message {
+    color: var(--team-text-muted);
+    font-size: 0.9em;
+    padding: 10px 0;
+}
+
+.error-message {
+    color: var(--text-error, #dc2626);
+}
+
+/* Actions */
+.team-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.action-btn {
+    width: 100%;
+}
+
+/* Share Modal */
+.team-share-modal {
+    padding: 20px;
+}
+
+.team-share-modal h2 {
+    margin-top: 0;
+}
+
+/* Report Modal */
+.team-report-modal {
+    padding: 20px;
+    min-width: 500px;
+}
+
+.team-report-modal h2 {
+    margin-top: 0;
+}
+
+.report-preview {
+    margin: 15px 0;
+}
+
+.report-preview h3 {
+    margin: 0 0 10px 0;
+    font-size: 0.9em;
+    color: var(--team-text-muted);
+}
+
+.report-preview-content {
+    border: 1px solid var(--team-border);
+    border-radius: 4px;
+    padding: 10px;
+    background-color: var(--background-primary, #fff);
+    resize: vertical;
+}
+
+/* Settings Page */
+.setting-item-control textarea {
+    min-height: 100px;
+    width: 100%;
+}

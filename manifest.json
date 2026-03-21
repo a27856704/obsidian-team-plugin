@@ -1,0 +1,10 @@
+{
+	"id": "team-collaboration",
+	"name": "Team Collaboration",
+	"version": "1.0.0",
+	"minAppVersion": "1.0.0",
+	"description": "团队协作插件 - 支持文档分享、插件同步、日报/月报生成及 AI 驱动的文档总结",
+	"author": "Your Name",
+	"authorUrl": "",
+	"isDesktopOnly": false
+}
