@@ -1,8 +1,44 @@
-import { App, Modal, Notice } from 'obsidian';
+import { App, Modal, Notice, Setting } from 'obsidian';
 import * as Y from 'yjs';
 import TeamPlugin from '../main';
 import { DocumentHistoryEntry } from '../types/document';
 import { getErrorMessage } from '../utils/api';
+
+class ConfirmRestoreModal extends Modal {
+    private readonly message: string;
+    private readonly onConfirm: () => void;
+
+    constructor(app: App, message: string, onConfirm: () => void) {
+        super(app);
+        this.message = message;
+        this.onConfirm = onConfirm;
+    }
+
+    onOpen(): void {
+        const { contentEl } = this;
+        contentEl.empty();
+        contentEl.createEl('p', { text: this.message });
+        new Setting(contentEl)
+            .addButton(button => button
+                .setButtonText('确定还原')
+                .setWarning()
+                .onClick(() => {
+                    this.onConfirm();
+                    this.close();
+                })
+            )
+            .addButton(button => button
+                .setButtonText('取消')
+                .onClick(() => {
+                    this.close();
+                })
+            );
+    }
+
+    onClose(): void {
+        this.contentEl.empty();
+    }
+}
 
 export class HistoryModal extends Modal {
     plugin: TeamPlugin;
@@ -48,7 +84,15 @@ export class HistoryModal extends Modal {
                 const btnGroup = row.createEl('div');
 
                 const restoreBtn = btnGroup.createEl('button', { text: '🔄 还原到此' });
-                restoreBtn.onclick = () => this.restoreHistory(h.id);
+                restoreBtn.onclick = () => {
+                    new ConfirmRestoreModal(
+                        this.app,
+                        '确定要用该版本覆盖当前的云端文档吗？此操作不可逆！(正在协同的人将自动同步到此版本)',
+                        () => {
+                            void this.restoreHistory(h.id);
+                        }
+                    ).open();
+                };
             });
         } catch (e: unknown) {
             loadingEl.innerText = `加载失败: ${getErrorMessage(e)}`;
@@ -61,10 +105,6 @@ export class HistoryModal extends Modal {
     }
 
     async restoreHistory(historyId: string) {
-        if (!confirm('确定要用该版本覆盖当前的云端文档吗？此操作不可逆！(正在协同的人将自动同步到此版本)')) {
-            return;
-        }
-
         try {
             const snapshot = await this.plugin.teamManager.getTeamDocumentHistorySnapshot(this.teamId, this.docId, historyId);
             if (!snapshot.ydoc) throw new Error("返回快照数据为空");

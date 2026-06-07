@@ -230,14 +230,12 @@ export class MonthlyReport {
             await this.app.vault.createFolder(folderPath);
         }
 
-        // Create or update file
-        let file = this.app.vault.getAbstractFileByPath(filePath);
-        if (file instanceof TFile) {
-            await this.app.vault.modify(file, report.content);
-        } else {
-            file = await this.app.vault.create(filePath, report.content);
+        const existing = this.app.vault.getAbstractFileByPath(filePath);
+        if (existing instanceof TFile) {
+            await this.app.vault.modify(existing, report.content);
+            return existing;
         }
 
-        return file as TFile;
+        return await this.app.vault.create(filePath, report.content);
     }
 }

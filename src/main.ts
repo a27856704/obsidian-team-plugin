@@ -47,7 +47,7 @@ export default class TeamPlugin extends Plugin {
 
         // Add ribbon icon
         this.addRibbonIcon('users', '团队协作', () => {
-            this.activateTeamView();
+            void this.activateTeamView();
         });
 
         // Register commands
@@ -63,7 +63,9 @@ export default class TeamPlugin extends Plugin {
         this.checkTokenExpiry();
 
         // 当 Yjs WebSocket 收到 4001 时自动登出
-        this.collabEditor.onAuthFailed = () => this.handleAuthExpired();
+        this.collabEditor.onAuthFailed = () => {
+            void this.handleAuthExpired();
+        };
     }
 
     onunload() {
@@ -87,7 +89,7 @@ export default class TeamPlugin extends Plugin {
             const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))) as JwtPayload;
             if (payload.exp && payload.exp * 1000 < Date.now()) {
                 console.warn('[Auth] JWT 已过期，自动登出');
-                this.handleAuthExpired();
+                void this.handleAuthExpired();
             }
         } catch {
             // token 格式异常，忽略
@@ -109,9 +111,11 @@ export default class TeamPlugin extends Plugin {
         }
         new Notice('⚠️ 登录已过期，请重新登录');
         // 刷新团队面板
-        this.app.workspace.getLeavesOfType(TEAM_VIEW_TYPE).forEach(leaf => {
-            (leaf.view as TeamView).render();
-        });
+        for (const leaf of this.app.workspace.getLeavesOfType(TEAM_VIEW_TYPE)) {
+            if (leaf.view instanceof TeamView) {
+                void leaf.view.render();
+            }
+        }
     }
 
     async saveSettings() {
@@ -225,7 +229,7 @@ export default class TeamPlugin extends Plugin {
             id: 'open-team-view',
             name: '打开团队视图',
             callback: () => {
-                this.activateTeamView();
+                void this.activateTeamView();
             }
         });
 
@@ -233,15 +237,17 @@ export default class TeamPlugin extends Plugin {
         this.addCommand({
             id: 'generate-daily-report',
             name: '生成日报',
-            callback: async () => {
-                try {
-                    const report = await this.dailyReport.generateTodayReport();
-                    const file = await this.dailyReport.saveReport(report);
-                    new Notice(`日报已生成: ${file.path}`);
-                    this.app.workspace.openLinkText(file.path, '', true);
-                } catch (e) {
-                    new Notice(`生成日报失败: ${e}`);
-                }
+            callback: () => {
+                void (async () => {
+                    try {
+                        const report = await this.dailyReport.generateTodayReport();
+                        const file = await this.dailyReport.saveReport(report);
+                        new Notice(`日报已生成: ${file.path}`);
+                        await this.app.workspace.openLinkText(file.path, '', true);
+                    } catch (e) {
+                        new Notice(`生成日报失败: ${e}`);
+                    }
+                })();
             }
         });
 
@@ -249,15 +255,17 @@ export default class TeamPlugin extends Plugin {
         this.addCommand({
             id: 'generate-monthly-report',
             name: '生成月报',
-            callback: async () => {
-                try {
-                    const report = await this.monthlyReport.generateCurrentMonthReport();
-                    const file = await this.monthlyReport.saveReport(report);
-                    new Notice(`月报已生成: ${file.path}`);
-                    this.app.workspace.openLinkText(file.path, '', true);
-                } catch (e) {
-                    new Notice(`生成月报失败: ${e}`);
-                }
+            callback: () => {
+                void (async () => {
+                    try {
+                        const report = await this.monthlyReport.generateCurrentMonthReport();
+                        const file = await this.monthlyReport.saveReport(report);
+                        new Notice(`月报已生成: ${file.path}`);
+                        await this.app.workspace.openLinkText(file.path, '', true);
+                    } catch (e) {
+                        new Notice(`生成月报失败: ${e}`);
+                    }
+                })();
             }
         });
 
@@ -292,8 +300,8 @@ export default class TeamPlugin extends Plugin {
         this.addCommand({
             id: 'sync-team-plugins',
             name: '同步团队插件',
-            callback: async () => {
-                await this.syncTeamPlugins();
+            callback: () => {
+                void this.syncTeamPlugins();
             }
         });
 
@@ -301,20 +309,21 @@ export default class TeamPlugin extends Plugin {
         this.addCommand({
             id: 'show-installed-plugins',
             name: '查看已安装插件列表',
-            callback: async () => {
-                const plugins = await this.pluginSync.getInstalledPlugins();
-                const md = this.pluginSync.generatePluginListMarkdown(plugins);
+            callback: () => {
+                void (async () => {
+                    const plugins = await this.pluginSync.getInstalledPlugins();
+                    const md = this.pluginSync.generatePluginListMarkdown(plugins);
 
-                // Create temp file
-                const filePath = 'plugins-list.md';
-                const existingFile = this.app.vault.getAbstractFileByPath(filePath);
-                if (existingFile) {
-                    await this.app.vault.modify(existingFile as TFile, md);
-                } else {
-                    await this.app.vault.create(filePath, md);
-                }
+                    const filePath = 'plugins-list.md';
+                    const existingFile = this.app.vault.getAbstractFileByPath(filePath);
+                    if (existingFile instanceof TFile) {
+                        await this.app.vault.modify(existingFile, md);
+                    } else {
+                        await this.app.vault.create(filePath, md);
+                    }
 
-                this.app.workspace.openLinkText(filePath, '', true);
+                    await this.app.workspace.openLinkText(filePath, '', true);
+                })();
             }
         });
 
@@ -332,7 +341,9 @@ export default class TeamPlugin extends Plugin {
             id: 'login',
             name: '登录 / 注册',
             callback: () => {
-                new LoginModal(this.app, this, () => this.activateTeamView()).open();
+                new LoginModal(this.app, this, () => {
+                    void this.activateTeamView();
+                }).open();
             }
         });
 
@@ -343,7 +354,9 @@ export default class TeamPlugin extends Plugin {
             callback: () => {
                 if (!this.settings.apiKey) {
                     new Notice('请先登录');
-                    new LoginModal(this.app, this, () => this.activateTeamView()).open();
+                    new LoginModal(this.app, this, () => {
+                        void this.activateTeamView();
+                    }).open();
                     return;
                 }
                 new CreateTeamModal(this.app, this).open();
@@ -391,7 +404,7 @@ export default class TeamPlugin extends Plugin {
         }
 
         if (leaf) {
-            workspace.revealLeaf(leaf);
+            void workspace.revealLeaf(leaf);
         }
     }
 

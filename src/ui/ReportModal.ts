@@ -80,25 +80,27 @@ export class ReportModal extends Modal {
         new Setting(contentEl)
             .addButton(button => button
                 .setButtonText('生成预览')
-                .onClick(async () => {
-                    button.setDisabled(true);
-                    button.setButtonText('生成中...');
-                    progressDiv.addClass('is-visible');
+                .onClick(() => {
+                    void (async () => {
+                        button.setDisabled(true);
+                        button.setButtonText('生成中...');
+                        progressDiv.addClass('is-visible');
 
-                    try {
-                        await this.generatePreview(previewEl, progressDiv);
-                    } finally {
-                        button.setDisabled(false);
-                        button.setButtonText('生成预览');
-                        progressDiv.removeClass('is-visible');
-                    }
+                        try {
+                            await this.generatePreview(previewEl, progressDiv);
+                        } finally {
+                            button.setDisabled(false);
+                            button.setButtonText('生成预览');
+                            progressDiv.removeClass('is-visible');
+                        }
+                    })();
                 })
             )
             .addButton(button => button
                 .setButtonText('保存报告')
                 .setCta()
-                .onClick(async () => {
-                    await this.saveReport(previewEl.value);
+                .onClick(() => {
+                    void this.saveReport(previewEl.value);
                 })
             )
             .addButton(button => button
@@ -161,8 +163,8 @@ export class ReportModal extends Modal {
 
             // Create file
             const existingFile = this.app.vault.getAbstractFileByPath(filePath);
-            if (existingFile) {
-                await this.app.vault.modify(existingFile as TFile, content);
+            if (existingFile instanceof TFile) {
+                await this.app.vault.modify(existingFile, content);
             } else {
                 await this.app.vault.create(filePath, content);
             }

@@ -1,9 +1,5 @@
-import { MarkdownView, type App, type DataAdapter, type Editor, type TFile } from 'obsidian';
+import { MarkdownView, type App, type Editor, type TFile } from 'obsidian';
 import type { EditorView } from '@codemirror/view';
-
-interface VaultAdapterWithBasePath extends DataAdapter {
-    basePath?: string;
-}
 
 interface EditorWithCodeMirror extends Editor {
     cm?: EditorView;
@@ -12,10 +8,6 @@ interface EditorWithCodeMirror extends Editor {
 interface PluginsHost {
     enabledPlugins?: Set<string>;
     installPlugin?: (id: string) => Promise<void>;
-}
-
-export function getVaultBasePath(adapter: DataAdapter): string {
-    return (adapter as VaultAdapterWithBasePath).basePath ?? '';
 }
 
 export function getEnabledPluginIds(app: App): Set<string> {

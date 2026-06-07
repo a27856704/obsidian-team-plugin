@@ -1,10 +1,16 @@
-import { App, requestUrl, normalizePath } from 'obsidian';
-import { PluginInfo, PluginManifestJson, PluginSyncPackage } from '../types/document';
+import { App, requestUrl, type PluginManifest } from 'obsidian';
+import { PluginInfo, PluginSyncPackage } from '../types/document';
 import { TeamPluginSettings } from '../types';
 import { readResponseJson } from '../utils/api';
-import { getEnabledPluginIds, getPluginInstaller, getVaultBasePath } from '../utils/obsidian';
-import * as fs from 'fs';
-import * as path from 'path';
+import { getEnabledPluginIds, getPluginInstaller } from '../utils/obsidian';
+
+interface InstalledPluginEntry {
+    manifest?: PluginManifest;
+}
+
+interface PluginsRegistry {
+    plugins?: Record<string, InstalledPluginEntry>;
+}
 
 export class PluginSync {
     private app: App;
@@ -42,12 +48,13 @@ export class PluginSync {
         return readResponseJson<T>(response);
     }
 
-    /**
-     * Get plugins directory path
-     */
-    private getPluginsDir(): string {
-        const basePath = getVaultBasePath(this.app.vault.adapter);
-        return path.join(basePath, '.obsidian', 'plugins');
+    private getPluginsRegistry(): Record<string, InstalledPluginEntry> {
+        const host = (this.app as App & { plugins?: PluginsRegistry }).plugins;
+        return host?.plugins ?? {};
+    }
+
+    private getPluginDataPath(pluginId: string): string {
+        return `${this.app.vault.configDir}/plugins/${pluginId}/data.json`;
     }
 
     /**
@@ -55,43 +62,31 @@ export class PluginSync {
      */
     async getInstalledPlugins(): Promise<PluginInfo[]> {
         const plugins: PluginInfo[] = [];
-        const pluginsDir = this.getPluginsDir();
+        const enabledPlugins = getEnabledPluginIds(this.app);
+        const adapter = this.app.vault.adapter;
 
-        try {
-            const dirs = fs.readdirSync(pluginsDir);
-
-            for (const dir of dirs) {
-                const manifestPath = path.join(pluginsDir, dir, 'manifest.json');
-
-                if (fs.existsSync(manifestPath)) {
-                    try {
-                        const manifestContent = fs.readFileSync(manifestPath, 'utf-8');
-                        const manifest = JSON.parse(manifestContent) as PluginManifestJson;
-
-                        const enabledPlugins = getEnabledPluginIds(this.app);
-
-                        // Check if plugin has settings
-                        const dataPath = path.join(pluginsDir, dir, 'data.json');
-                        const hasSettings = fs.existsSync(dataPath);
-
-                        // Exclude this plugin and system plugins
-                        if (manifest.id !== 'team-collaboration' &&
-                            !this.settings.excludedPlugins.includes(manifest.id)) {
-                            plugins.push({
-                                id: manifest.id,
-                                name: manifest.name,
-                                version: manifest.version,
-                                enabled: enabledPlugins.has(manifest.id),
-                                hasSettings,
-                            });
-                        }
-                    } catch (e) {
-                        console.error(`Error reading manifest for ${dir}:`, e);
-                    }
-                }
+        for (const entry of Object.values(this.getPluginsRegistry())) {
+            const manifest = entry.manifest;
+            if (!manifest?.id) {
+                continue;
             }
-        } catch (e) {
-            console.error('Error reading plugins directory:', e);
+
+            try {
+                const hasSettings = await adapter.exists(this.getPluginDataPath(manifest.id));
+
+                if (manifest.id !== 'team-collaboration' &&
+                    !this.settings.excludedPlugins.includes(manifest.id)) {
+                    plugins.push({
+                        id: manifest.id,
+                        name: manifest.name,
+                        version: manifest.version,
+                        enabled: enabledPlugins.has(manifest.id),
+                        hasSettings,
+                    });
+                }
+            } catch (e) {
+                console.error(`Error reading manifest for ${manifest.id}:`, e);
+            }
         }
 
         return plugins;
@@ -103,16 +98,15 @@ export class PluginSync {
     async createSyncPackage(): Promise<PluginSyncPackage> {
         const plugins = await this.getInstalledPlugins();
         const settings: Record<string, unknown> = {};
+        const adapter = this.app.vault.adapter;
 
         if (this.settings.syncPluginSettings) {
-            const pluginsDir = this.getPluginsDir();
-
             for (const plugin of plugins) {
                 if (plugin.hasSettings) {
-                    const dataPath = path.join(pluginsDir, plugin.id, 'data.json');
+                    const dataPath = this.getPluginDataPath(plugin.id);
                     try {
-                        const dataContent = fs.readFileSync(dataPath, 'utf-8');
-                        settings[plugin.id] = JSON.parse(dataContent);
+                        const dataContent = await adapter.read(dataPath);
+                        settings[plugin.id] = JSON.parse(dataContent) as unknown;
                     } catch (e) {
                         console.error(`Error reading settings for ${plugin.id}:`, e);
                     }
@@ -175,7 +169,6 @@ export class PluginSync {
                     await communityPlugins.installPlugin(plugin.id);
                     installed.push(plugin.id);
 
-                    // Apply settings if available
                     if (syncPackage.settings[plugin.id] && this.settings.syncPluginSettings) {
                         await this.applyPluginSettings(plugin.id, syncPackage.settings[plugin.id]);
                     }
@@ -193,11 +186,10 @@ export class PluginSync {
      * Apply settings to a plugin
      */
     private async applyPluginSettings(pluginId: string, settings: unknown): Promise<void> {
-        const pluginsDir = this.getPluginsDir();
-        const dataPath = path.join(pluginsDir, pluginId, 'data.json');
+        const dataPath = this.getPluginDataPath(pluginId);
 
         try {
-            fs.writeFileSync(dataPath, JSON.stringify(settings, null, 2));
+            await this.app.vault.adapter.write(dataPath, JSON.stringify(settings, null, 2));
         } catch (e) {
             console.error(`Error applying settings for ${pluginId}:`, e);
         }

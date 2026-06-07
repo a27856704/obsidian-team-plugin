@@ -1,6 +1,6 @@
 import { App, PluginSettingTab, Setting, Notice } from 'obsidian';
 import type TeamPlugin from './main';
-import { TeamPluginSettings, AIProviderType, DEFAULT_DAILY_TEMPLATE, DEFAULT_MONTHLY_TEMPLATE } from './types';
+import { AIProviderType, DEFAULT_DAILY_TEMPLATE, DEFAULT_MONTHLY_TEMPLATE } from './types';
 
 export class TeamPluginSettingTab extends PluginSettingTab {
     plugin: TeamPlugin;
@@ -10,11 +10,14 @@ export class TeamPluginSettingTab extends PluginSettingTab {
         this.plugin = plugin;
     }
 
+    // PluginSettingTab.display remains the supported settings UI entry for current Obsidian versions.
     display(): void {
+        this.renderSettings();
+    }
+
+    private renderSettings(): void {
         const { containerEl } = this;
         containerEl.empty();
-
-        new Setting(containerEl).setName('Team Collaboration').setHeading();
 
         // ========== Server Settings ==========
         new Setting(containerEl).setName('Server').setHeading();
@@ -86,7 +89,7 @@ export class TeamPluginSettingTab extends PluginSettingTab {
                         this.plugin.settings.aiEndpoint = 'https://www.dmxapi.cn/v1/chat/completions';
                     }
                     await this.plugin.saveSettings();
-                    this.display(); // Refresh to show relevant options
+                    this.renderSettings();
                 })
             );
 
@@ -152,23 +155,25 @@ export class TeamPluginSettingTab extends PluginSettingTab {
             .setDesc('验证 AI API 配置是否正确')
             .addButton(button => button
                 .setButtonText('测试连接')
-                .onClick(async () => {
-                    button.setDisabled(true);
-                    button.setButtonText('测试中...');
+                .onClick(() => {
+                    void (async () => {
+                        button.setDisabled(true);
+                        button.setButtonText('测试中...');
 
-                    try {
-                        const success = await this.plugin.summarizer.testConnection();
-                        if (success) {
-                            new Notice('✅ AI 连接成功！');
-                        } else {
-                            new Notice('❌ AI 连接失败，请检查配置');
+                        try {
+                            const success = await this.plugin.summarizer.testConnection();
+                            if (success) {
+                                new Notice('✅ AI 连接成功！');
+                            } else {
+                                new Notice('❌ AI 连接失败，请检查配置');
+                            }
+                        } catch (e) {
+                            new Notice(`❌ 连接错误: ${e}`);
+                        } finally {
+                            button.setDisabled(false);
+                            button.setButtonText('测试连接');
                         }
-                    } catch (e) {
-                        new Notice(`❌ 连接错误: ${e}`);
-                    } finally {
-                        button.setDisabled(false);
-                        button.setButtonText('测试连接');
-                    }
+                    })();
                 })
             );
 
@@ -262,8 +267,8 @@ export class TeamPluginSettingTab extends PluginSettingTab {
                 })
             );
 
-        // ========== General Settings ==========
-        new Setting(containerEl).setName('General').setHeading();
+        // ========== Interface Settings ==========
+        new Setting(containerEl).setName('界面').setHeading();
 
         new Setting(containerEl)
             .setName('语言')

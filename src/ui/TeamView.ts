@@ -1,4 +1,4 @@
-import { App, ItemView, WorkspaceLeaf, Menu, Notice, requestUrl, TFile, MarkdownView, FuzzySuggestModal } from 'obsidian';
+import { App, ItemView, WorkspaceLeaf, Menu, Notice, requestUrl, TFile, FuzzySuggestModal } from 'obsidian';
 import type TeamPlugin from '../main';
 import { Team, TeamMember } from '../types/team';
 import { TeamDocument } from '../types/document';
@@ -84,7 +84,7 @@ export class TeamView extends ItemView {
 
         const tryConnect = () => {
             if (!this.currentTeam || !this.plugin.settings.apiKey) return;
-            this.logTeamWs('connect', { teamId: this.currentTeam!.id, url: baseUrl });
+            this.logTeamWs('connect', { teamId: this.currentTeam.id, url: baseUrl });
             try {
                 const ws = new WebSocket(wsUrl);
                 ws.onopen = () => {
@@ -103,7 +103,7 @@ export class TeamView extends ItemView {
                                 const file = this.app.vault.getAbstractFileByPath(path);
                                 if (file && file instanceof TFile) {
                                     try {
-                                        await this.app.vault.delete(file);
+                                        await this.app.fileManager.trashFile(file);
                                     } catch {
                                         // 文件可能已被删除或路径已变更，忽略 ENOENT
                                     }
@@ -121,7 +121,7 @@ export class TeamView extends ItemView {
                                     }
                                 }
                             }
-                            this.render();
+                            void this.render();
                         }
                     } catch {
                         // ignore
@@ -137,7 +137,7 @@ export class TeamView extends ItemView {
                     });
                     // 4001 = 未授权（token 过期），触发自动登出
                     if (ev.code === 4001) {
-                        this.plugin.handleAuthExpired();
+                        void this.plugin.handleAuthExpired();
                         return;
                     }
                     if (!this.isDisconnectingWs) this.scheduleReconnect();
@@ -277,7 +277,9 @@ export class TeamView extends ItemView {
             cls: 'action-btn'
         });
         loginBtn.addEventListener('click', () => {
-            new LoginModal(this.app, this.plugin, () => this.render()).open();
+            new LoginModal(this.app, this.plugin, () => {
+                void this.render();
+            }).open();
         });
 
         // Show logged-in user
@@ -307,30 +309,34 @@ export class TeamView extends ItemView {
                     const acceptBtn = actions.createEl('button', { text: '✅ 接受', cls: 'action-btn accept-btn' });
                     const rejectBtn = actions.createEl('button', { text: '❌ 拒绝', cls: 'action-btn reject-btn' });
 
-                    acceptBtn.addEventListener('click', async () => {
-                        try {
-                            const newTeam = await this.plugin.teamManager.acceptInvitation(inv.id);
-                            new Notice(`✅ 已成功加入团队: ${newTeam.name}`);
-                            this.plugin.settings.currentTeamId = newTeam.id;
-                            await this.plugin.saveSettings();
-                            this.currentTeam = newTeam;
-                            this.plugin.teamManager.setCurrentTeam(newTeam);
-                            await this.render();
-                        } catch {
-                            new Notice(`接受邀请失败，可能已过期或已处理`);
-                            await this.render(); // 刷新清理无效邀请
-                        }
+                    acceptBtn.addEventListener('click', () => {
+                        void (async () => {
+                            try {
+                                const newTeam = await this.plugin.teamManager.acceptInvitation(inv.id);
+                                new Notice(`✅ 已成功加入团队: ${newTeam.name}`);
+                                this.plugin.settings.currentTeamId = newTeam.id;
+                                await this.plugin.saveSettings();
+                                this.currentTeam = newTeam;
+                                this.plugin.teamManager.setCurrentTeam(newTeam);
+                                await this.render();
+                            } catch {
+                                new Notice(`接受邀请失败，可能已过期或已处理`);
+                                await this.render();
+                            }
+                        })();
                     });
 
-                    rejectBtn.addEventListener('click', async () => {
-                        try {
-                            await this.plugin.teamManager.rejectInvitation(inv.id);
-                            new Notice('已拒绝邀请');
-                            await this.render();
-                        } catch {
-                            new Notice(`拒绝邀请失败，可能已过期或已处理`);
-                            await this.render(); // 刷新清理无效邀请
-                        }
+                    rejectBtn.addEventListener('click', () => {
+                        void (async () => {
+                            try {
+                                await this.plugin.teamManager.rejectInvitation(inv.id);
+                                new Notice('已拒绝邀请');
+                                await this.render();
+                            } catch {
+                                new Notice(`拒绝邀请失败，可能已过期或已处理`);
+                                await this.render();
+                            }
+                        })();
                     });
                 }
             }
@@ -361,19 +367,21 @@ export class TeamView extends ItemView {
             console.error('Failed to load teams:', e);
         }
 
-        select.addEventListener('change', async () => {
-            this.plugin.settings.currentTeamId = select.value;
-            await this.plugin.saveSettings();
+        select.addEventListener('change', () => {
+            void (async () => {
+                this.plugin.settings.currentTeamId = select.value;
+                await this.plugin.saveSettings();
 
-            if (select.value) {
-                this.currentTeam = await this.plugin.teamManager.getTeam(select.value);
-                this.plugin.teamManager.setCurrentTeam(this.currentTeam);
-            } else {
-                this.currentTeam = null;
-                this.plugin.teamManager.setCurrentTeam(null);
-            }
+                if (select.value) {
+                    this.currentTeam = await this.plugin.teamManager.getTeam(select.value);
+                    this.plugin.teamManager.setCurrentTeam(this.currentTeam);
+                } else {
+                    this.currentTeam = null;
+                    this.plugin.teamManager.setCurrentTeam(null);
+                }
 
-            await this.render();
+                await this.render();
+            })();
         });
 
         // Create team button
@@ -441,17 +449,19 @@ export class TeamView extends ItemView {
             text: '+ 新建文档',
             cls: 'team-new-doc-btn'
         });
-        newBtn.addEventListener('click', async () => {
-            const filename = `未命名文档-${Date.now()}.md`;
-            const teamPrefix = `团队云盘/${this.currentTeam!.name}`;
-            const fullPath = `${teamPrefix}/${filename}`;
-            try {
-                await this.plugin.teamManager.createTeamDocument(this.currentTeam!.id, fullPath);
-                new Notice(`已在云端创建文档: ${filename}`);
-                this.render(); // refresh list
-            } catch (e: unknown) {
-                new Notice(`创建云文档失败: ${getErrorMessage(e)}`);
-            }
+        newBtn.addEventListener('click', () => {
+            void (async () => {
+                const filename = `未命名文档-${Date.now()}.md`;
+                const teamPrefix = `团队云盘/${this.currentTeam!.name}`;
+                const fullPath = `${teamPrefix}/${filename}`;
+                try {
+                    await this.plugin.teamManager.createTeamDocument(this.currentTeam!.id, fullPath);
+                    new Notice(`已在云端创建文档: ${filename}`);
+                    await this.render();
+                } catch (e: unknown) {
+                    new Notice(`创建云文档失败: ${getErrorMessage(e)}`);
+                }
+            })();
         });
 
         // Add "Upload Local File" button
@@ -501,54 +511,53 @@ export class TeamView extends ItemView {
 
                     // History button
                     const historyBtn = rightDiv.createEl('button', { text: '🕒', cls: 'doc-hist-btn' });
-                    historyBtn.addEventListener('click', async (e) => {
+                    historyBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        // Open History Modal
                         new HistoryModal(this.app, this.plugin, this.currentTeam!.id, doc.id, doc.path).open();
                     });
 
                     // Delete button
                     const delBtn = rightDiv.createEl('button', { text: '🗑️', cls: 'doc-del-btn' });
-                    delBtn.addEventListener('click', async (e) => {
+                    delBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
-                        try {
-                            // 如果当前正在协同该文件，先停止协同（否则服务端会拒绝删除）
-                            if (this.plugin.collabEditor.isActive && this.plugin.collabEditor.activeFilePath === doc.path) {
-                                this.plugin.collabEditor.stopCollab();
+                        void (async () => {
+                            try {
+                                if (this.plugin.collabEditor.isActive && this.plugin.collabEditor.activeFilePath === doc.path) {
+                                    this.plugin.collabEditor.stopCollab();
+                                }
+                                await this.plugin.teamManager.deleteTeamDocument(this.currentTeam!.id, doc.id);
+                                const localFile = this.app.vault.getAbstractFileByPath(doc.path);
+                                if (localFile instanceof TFile) {
+                                    await this.app.fileManager.trashFile(localFile);
+                                }
+                                new Notice('已从云端删除此文件');
+                                await this.render();
+                            } catch (err: unknown) {
+                                new Notice(getErrorMessage(err) || '删除失败');
                             }
-                            await this.plugin.teamManager.deleteTeamDocument(this.currentTeam!.id, doc.id);
-                            // 同步删除本地 vault 文件
-                            const localFile = this.app.vault.getAbstractFileByPath(doc.path);
-                            if (localFile && localFile instanceof TFile) {
-                                await this.app.vault.delete(localFile);
-                            }
-                            new Notice('已从云端删除此文件');
-                            this.render();
-                        } catch (err: unknown) {
-                            new Notice(getErrorMessage(err) || '删除失败');
-                        }
+                        })();
                     });
 
                     // 点击时自动与本地目录挂钩，并抛给 Obsidian 的文件系统去开启
-                    li.addEventListener('click', async () => {
-                        const teamPrefix = `团队云盘/${this.currentTeam!.name}`;
-                        const localPath = doc.path;
+                    li.addEventListener('click', () => {
+                        void (async () => {
+                            const teamPrefix = `团队云盘/${this.currentTeam!.name}`;
+                            const localPath = doc.path;
 
-                        let file = this.app.vault.getAbstractFileByPath(localPath);
-                        if (!file) {
-                            // Ensure folder exists
-                            if (!this.app.vault.getAbstractFileByPath('团队云盘')) {
-                                await this.app.vault.createFolder('团队云盘');
+                            let file = this.app.vault.getAbstractFileByPath(localPath);
+                            if (!file) {
+                                if (!this.app.vault.getAbstractFileByPath('团队云盘')) {
+                                    await this.app.vault.createFolder('团队云盘');
+                                }
+                                if (!this.app.vault.getAbstractFileByPath(teamPrefix)) {
+                                    await this.app.vault.createFolder(teamPrefix);
+                                }
+                                file = await this.app.vault.create(localPath, '');
                             }
-                            if (!this.app.vault.getAbstractFileByPath(teamPrefix)) {
-                                await this.app.vault.createFolder(teamPrefix);
-                            }
-                            // Create empty file (Yjs engine will fill the content as soon as it opens)
-                            file = await this.app.vault.create(localPath, '');
-                        }
 
-                        await this.app.workspace.openLinkText(localPath, '', false);
-                        new Notice(`正在为您接入团队文档...`);
+                            await this.app.workspace.openLinkText(localPath, '', false);
+                            new Notice(`正在为您接入团队文档...`);
+                        })();
                     });
                 }
             }
@@ -566,8 +575,8 @@ export class TeamView extends ItemView {
             text: '同步插件',
             cls: 'action-btn'
         });
-        syncBtn.addEventListener('click', async () => {
-            await this.plugin.syncTeamPlugins();
+        syncBtn.addEventListener('click', () => {
+            void this.plugin.syncTeamPlugins();
         });
 
         // Generate report button
@@ -598,11 +607,13 @@ export class TeamView extends ItemView {
             menu.addItem(item => item
                 .setTitle('移除成员')
                 .setIcon('user-minus')
-                .onClick(async () => {
-                    if (this.currentTeam) {
-                        await this.plugin.teamManager.removeMember(this.currentTeam.id, member.userId);
-                        await this.render();
-                    }
+                .onClick(() => {
+                    void (async () => {
+                        if (this.currentTeam) {
+                            await this.plugin.teamManager.removeMember(this.currentTeam.id, member.userId);
+                            await this.render();
+                        }
+                    })();
                 })
             );
         }
@@ -627,32 +638,31 @@ export class TeamView extends ItemView {
         }
 
         // 使用 Obsidian 的 FuzzySuggestModal 供用户搜索选择
-        const modal = new LocalFileSuggestModal(this.app, allFiles, async (file: TFile) => {
-            try {
-                const content = await this.app.vault.read(file);
-                const cloudPath = `${teamPrefix}/${file.name}`;
+        const modal = new LocalFileSuggestModal(this.app, allFiles, (file: TFile) => {
+            void (async () => {
+                try {
+                    const content = await this.app.vault.read(file);
+                    const cloudPath = `${teamPrefix}/${file.name}`;
 
-                // 上传到服务端
-                await this.plugin.teamManager.createTeamDocument(team.id, cloudPath, content);
+                    await this.plugin.teamManager.createTeamDocument(team.id, cloudPath, content);
 
-                // 确保本地云盘目录存在
-                if (!this.app.vault.getAbstractFileByPath('团队云盘')) {
-                    await this.app.vault.createFolder('团队云盘');
+                    if (!this.app.vault.getAbstractFileByPath('团队云盘')) {
+                        await this.app.vault.createFolder('团队云盘');
+                    }
+                    if (!this.app.vault.getAbstractFileByPath(teamPrefix)) {
+                        await this.app.vault.createFolder(teamPrefix);
+                    }
+
+                    if (!this.app.vault.getAbstractFileByPath(cloudPath)) {
+                        await this.app.vault.rename(file, cloudPath);
+                    }
+
+                    new Notice(`✅ 已将「${file.name}」上传到团队云盘`);
+                    await this.render();
+                } catch (e: unknown) {
+                    new Notice(`上传失败: ${getErrorMessage(e)}`);
                 }
-                if (!this.app.vault.getAbstractFileByPath(teamPrefix)) {
-                    await this.app.vault.createFolder(teamPrefix);
-                }
-
-                // 把本地文件移动到云盘目录（如果目标不存在的话）
-                if (!this.app.vault.getAbstractFileByPath(cloudPath)) {
-                    await this.app.vault.rename(file, cloudPath);
-                }
-
-                new Notice(`✅ 已将「${file.name}」上传到团队云盘`);
-                await this.render();
-            } catch (e: unknown) {
-                new Notice(`上传失败: ${getErrorMessage(e)}`);
-            }
+            })();
         });
         modal.open();
     }

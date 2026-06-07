@@ -42,8 +42,8 @@ export class CreateTeamModal extends Modal {
             .addButton(button => button
                 .setButtonText('创建')
                 .setCta()
-                .onClick(async () => {
-                    await this.handleCreate();
+                .onClick(() => {
+                    void this.handleCreate();
                 })
             )
             .addButton(button => button
@@ -73,7 +73,7 @@ export class CreateTeamModal extends Modal {
             this.close();
 
             // Refresh team view
-            this.plugin.activateTeamView();
+            void this.plugin.activateTeamView();
         } catch (error) {
             console.error('Create team error:', error);
             new Notice(`创建失败: ${error}`);

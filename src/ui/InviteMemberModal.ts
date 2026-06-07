@@ -48,8 +48,8 @@ export class InviteMemberModal extends Modal {
             .addButton(button => button
                 .setButtonText('发送邀请')
                 .setCta()
-                .onClick(async () => {
-                    await this.handleInvite();
+                .onClick(() => {
+                    void this.handleInvite();
                 })
             )
             .addButton(button => button

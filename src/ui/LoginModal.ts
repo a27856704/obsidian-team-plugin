@@ -88,13 +88,17 @@ export class LoginModal extends Modal {
             .addButton(button => button
                 .setButtonText('登录')
                 .setCta()
-                .onClick(() => this.handleLogin())
+                .onClick(() => {
+                    void this.handleLogin();
+                })
             )
             .addButton(button => button
                 .setButtonText('去注册')
-                .onClick(async () => {
-                    await this.loadCaptcha();
-                    this.renderRegister();
+                .onClick(() => {
+                    void (async () => {
+                        await this.loadCaptcha();
+                        this.renderRegister();
+                    })();
                 })
             );
     }
@@ -149,15 +153,32 @@ export class LoginModal extends Modal {
             .addButton(button => button
                 .setButtonText('注册')
                 .setCta()
-                .onClick(() => this.handleRegister())
+                .onClick(() => {
+                    void this.handleRegister();
+                })
             )
             .addButton(button => button
                 .setButtonText('返回登录')
-                .onClick(async () => {
-                    await this.loadCaptcha();
-                    this.renderLogin();
+                .onClick(() => {
+                    void (async () => {
+                        await this.loadCaptcha();
+                        this.renderLogin();
+                    })();
                 })
             );
+    }
+
+    private setCaptchaSvg(containerEl: HTMLElement, svg: string): void {
+        containerEl.empty();
+        const parsed = new DOMParser().parseFromString(svg, 'image/svg+xml');
+        const root = parsed.documentElement;
+        if (root.tagName.toLowerCase() === 'parsererror') {
+            containerEl.textContent = '加载失败，点击重试';
+            containerEl.addClass('captcha-image-empty');
+            return;
+        }
+        containerEl.removeClass('captcha-image-empty');
+        containerEl.appendChild(root);
     }
 
     private renderCaptchaSection(containerEl: HTMLElement, isRegister: boolean) {
@@ -167,20 +188,24 @@ export class LoginModal extends Modal {
 
         const captchaImg = captchaDiv.createDiv('captcha-image');
         if (this.captchaSvg) {
-            captchaImg.innerHTML = this.captchaSvg;
+            this.setCaptchaSvg(captchaImg, this.captchaSvg);
         } else {
             captchaImg.textContent = '点击加载';
             captchaImg.addClass('captcha-image-empty');
         }
         captchaImg.setAttribute('title', '点击刷新验证码');
-        captchaImg.addEventListener('click', async () => {
-            captchaImg.textContent = '加载中...';
-            await this.loadCaptcha();
-            if (this.captchaSvg) {
-                captchaImg.innerHTML = this.captchaSvg;
-            } else {
-                captchaImg.textContent = '加载失败，点击重试';
-            }
+        captchaImg.addEventListener('click', () => {
+            void (async () => {
+                captchaImg.empty();
+                captchaImg.textContent = '加载中...';
+                await this.loadCaptcha();
+                if (this.captchaSvg) {
+                    this.setCaptchaSvg(captchaImg, this.captchaSvg);
+                } else {
+                    captchaImg.textContent = '加载失败，点击重试';
+                    captchaImg.addClass('captcha-image-empty');
+                }
+            })();
         });
 
         // Text input
