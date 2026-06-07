@@ -14,10 +14,10 @@ export class TeamPluginSettingTab extends PluginSettingTab {
         const { containerEl } = this;
         containerEl.empty();
 
-        containerEl.createEl('h1', { text: '团队协作插件设置' });
+        new Setting(containerEl).setName('Team Collaboration').setHeading();
 
         // ========== Server Settings ==========
-        containerEl.createEl('h2', { text: '服务器设置' });
+        new Setting(containerEl).setName('Server').setHeading();
 
         new Setting(containerEl)
             .setName('服务器地址')
@@ -68,7 +68,7 @@ export class TeamPluginSettingTab extends PluginSettingTab {
             );
 
         // ========== AI Settings ==========
-        containerEl.createEl('h2', { text: 'AI 设置' });
+        new Setting(containerEl).setName('AI').setHeading();
 
         new Setting(containerEl)
             .setName('AI 提供商')
@@ -173,7 +173,7 @@ export class TeamPluginSettingTab extends PluginSettingTab {
             );
 
         // ========== Report Settings ==========
-        containerEl.createEl('h2', { text: '报告设置' });
+        new Setting(containerEl).setName('Reports').setHeading();
 
         new Setting(containerEl)
             .setName('自动生成日报')
@@ -223,7 +223,7 @@ export class TeamPluginSettingTab extends PluginSettingTab {
             );
 
         // ========== Plugin Sync Settings ==========
-        containerEl.createEl('h2', { text: '插件同步设置' });
+        new Setting(containerEl).setName('Plugin sync').setHeading();
 
         new Setting(containerEl)
             .setName('同步插件列表')
@@ -263,7 +263,7 @@ export class TeamPluginSettingTab extends PluginSettingTab {
             );
 
         // ========== General Settings ==========
-        containerEl.createEl('h2', { text: '通用设置' });
+        new Setting(containerEl).setName('General').setHeading();
 
         new Setting(containerEl)
             .setName('语言')

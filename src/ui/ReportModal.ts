@@ -67,22 +67,13 @@ export class ReportModal extends Modal {
                 })
             );
 
-        // Progress display
         const progressDiv = contentEl.createDiv('report-progress');
-        progressDiv.style.padding = '8px 0';
-        progressDiv.style.color = 'var(--text-muted)';
-        progressDiv.style.fontSize = '0.9em';
-        progressDiv.style.display = 'none';
 
-        // Preview area
         const previewContainer = contentEl.createDiv('report-preview');
         previewContainer.createEl('h3', { text: '预览' });
         const previewEl = previewContainer.createEl('textarea', {
             cls: 'report-preview-content',
         });
-        previewEl.style.width = '100%';
-        previewEl.style.height = '300px';
-        previewEl.style.fontFamily = 'monospace';
         previewEl.placeholder = '点击"生成预览"查看报告内容';
 
         // Buttons
@@ -92,14 +83,14 @@ export class ReportModal extends Modal {
                 .onClick(async () => {
                     button.setDisabled(true);
                     button.setButtonText('生成中...');
-                    progressDiv.style.display = 'block';
+                    progressDiv.addClass('is-visible');
 
                     try {
                         await this.generatePreview(previewEl, progressDiv);
                     } finally {
                         button.setDisabled(false);
                         button.setButtonText('生成预览');
-                        progressDiv.style.display = 'none';
+                        progressDiv.removeClass('is-visible');
                     }
                 })
             )

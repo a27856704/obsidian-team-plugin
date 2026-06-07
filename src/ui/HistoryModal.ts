@@ -1,14 +1,20 @@
-import { App, Modal, Setting, Notice } from 'obsidian';
+import { App, Modal, Notice } from 'obsidian';
 import * as Y from 'yjs';
-import { TeamPluginSettings } from '../types';
 import TeamPlugin from '../main';
+
+interface DocumentHistoryEntry {
+    id: string;
+    version: number;
+    savedByName: string;
+    createdAt: string | number;
+}
 
 export class HistoryModal extends Modal {
     plugin: TeamPlugin;
     teamId: string;
     docId: string;
     docPath: string;
-    histories: any[] = [];
+    histories: DocumentHistoryEntry[] = [];
 
     constructor(app: App, plugin: TeamPlugin, teamId: string, docId: string, docPath: string) {
         super(app);
@@ -35,16 +41,9 @@ export class HistoryModal extends Modal {
             }
 
             const listEl = contentEl.createEl('div', { cls: 'history-list' });
-            listEl.style.maxHeight = '400px';
-            listEl.style.overflowY = 'auto';
 
             this.histories.forEach(h => {
                 const row = listEl.createEl('div', { cls: 'history-item' });
-                row.style.borderBottom = '1px solid var(--background-modifier-border)';
-                row.style.padding = '10px';
-                row.style.display = 'flex';
-                row.style.justifyContent = 'space-between';
-                row.style.alignItems = 'center';
 
                 const info = row.createEl('div');
                 info.createEl('div', { text: `版本 ${h.version} — 由 ${h.savedByName} 保存` });
@@ -56,8 +55,9 @@ export class HistoryModal extends Modal {
                 const restoreBtn = btnGroup.createEl('button', { text: '🔄 还原到此' });
                 restoreBtn.onclick = () => this.restoreHistory(h.id);
             });
-        } catch (e: any) {
-            loadingEl.innerText = `加载失败: ${e.message}`;
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            loadingEl.innerText = `加载失败: ${message}`;
         }
     }
 
@@ -67,7 +67,6 @@ export class HistoryModal extends Modal {
     }
 
     async restoreHistory(historyId: string) {
-        // Warning
         if (!confirm('确定要用该版本覆盖当前的云端文档吗？此操作不可逆！(正在协同的人将自动同步到此版本)')) {
             return;
         }
@@ -76,27 +75,23 @@ export class HistoryModal extends Modal {
             const snapshot = await this.plugin.teamManager.getTeamDocumentHistorySnapshot(this.teamId, this.docId, historyId);
             if (!snapshot.ydoc) throw new Error("返回快照数据为空");
 
-            // Convert base64 to Uint8Array
             const binaryString = atob(snapshot.ydoc);
             const bytes = new Uint8Array(binaryString.length);
             for (let i = 0; i < binaryString.length; i++) {
                 bytes[i] = binaryString.charCodeAt(i);
             }
 
-            // Load into a temporary YDoc to extract text
             const tempDoc = new Y.Doc();
             Y.applyUpdate(tempDoc, bytes);
             const restoredText = tempDoc.getText('codemirror').toString();
 
-            // 若当前文件刚好正被打开编辑，最丝滑的做法就是直接调用底层替换：
-            // 因为没暴露 WebSocket，目前我们选择最强力的操作：
-            // 通过 API 强行作为新提交压入后端
             await this.plugin.teamManager.createTeamDocument(this.teamId, this.docPath, restoredText);
 
             new Notice(`✅ 已成功恢复到版本 v${snapshot.version}`);
             this.close();
-        } catch (e: any) {
-            new Notice(`还原失败: ${e.message}`);
+        } catch (e: unknown) {
+            const message = e instanceof Error ? e.message : String(e);
+            new Notice(`还原失败: ${message}`);
         }
     }
 }

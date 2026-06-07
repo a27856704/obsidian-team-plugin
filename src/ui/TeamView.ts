@@ -103,7 +103,7 @@ export class TeamView extends ItemView {
                                 if (file && file instanceof TFile) {
                                     try {
                                         await this.app.vault.delete(file);
-                                    } catch (e) {
+                                    } catch {
                                         // 文件可能已被删除或路径已变更，忽略 ENOENT
                                     }
                                 }
@@ -114,7 +114,7 @@ export class TeamView extends ItemView {
                                     try {
                                         this.plugin.pendingRemoteRenames.add(from);
                                         await this.app.vault.rename(file, to);
-                                    } catch (e) {
+                                    } catch {
                                         this.plugin.pendingRemoteRenames.delete(from);
                                         // 重命名失败时忽略
                                     }
@@ -297,8 +297,8 @@ export class TeamView extends ItemView {
 
                 for (const inv of invitations) {
                     const item = inviteDiv.createDiv('invitation-item');
-                    const teamLabel = (inv as any).teamName || inv.teamId.substring(0, 8);
-                    const inviterLabel = (inv as any).inviterName || '未知';
+                    const teamLabel = inv.teamName || inv.teamId.substring(0, 8);
+                    const inviterLabel = inv.inviterName || '未知';
                     item.createEl('span', { text: `${inviterLabel} 邀请你加入「${teamLabel}」(${inv.role === 'member' ? '成员' : inv.role === 'admin' ? '管理员' : inv.role})` });
 
                     const actions = item.createDiv('invitation-actions');
@@ -314,7 +314,7 @@ export class TeamView extends ItemView {
                             this.currentTeam = newTeam;
                             this.plugin.teamManager.setCurrentTeam(newTeam);
                             await this.render();
-                        } catch (e: any) {
+                        } catch {
                             new Notice(`接受邀请失败，可能已过期或已处理`);
                             await this.render(); // 刷新清理无效邀请
                         }
@@ -325,7 +325,7 @@ export class TeamView extends ItemView {
                             await this.plugin.teamManager.rejectInvitation(inv.id);
                             new Notice('已拒绝邀请');
                             await this.render();
-                        } catch (e: any) {
+                        } catch {
                             new Notice(`拒绝邀请失败，可能已过期或已处理`);
                             await this.render(); // 刷新清理无效邀请
                         }
@@ -457,7 +457,6 @@ export class TeamView extends ItemView {
             text: '📤 上传本地文件',
             cls: 'team-upload-doc-btn'
         });
-        uploadBtn.style.marginLeft = '8px';
         uploadBtn.addEventListener('click', () => {
             this.showLocalFilePicker();
         });

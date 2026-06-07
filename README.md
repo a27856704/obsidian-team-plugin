@@ -1,94 +1,85 @@
 # Team Collaboration
 
-> **本目录为插件客户端源码**。完整业务仓库为 **`obsidian-team/`**（含 `server/`），推送到 Gitee。  
-> **GitHub 发版仓库**为上级工作区的 **`obsidian-plugin-publish/`**（在 `obsidian-team/` 执行 `npm run sync:publish` 同步源码与构建产物）。
+Obsidian plugin for team collaboration: shared vault documents, real-time co-editing, plugin sync, daily/monthly reports, and AI-powered summaries.
 
-Obsidian 团队协作插件 - 支持文档分享、实时协同编辑、插件同步、日报/月报生成及 AI 驱动的文档总结。
+## Features
 
-## 功能
+- **Shared documents**: Share vault documents to a team drive with collaborative editing
+- **Real-time co-editing**: Multi-user editing powered by Yjs
+- **Plugin sync**: Sync installed plugins and settings across team members
+- **Reports**: Generate daily and monthly team reports
+- **AI summaries**: Summarize documents using OpenAI or Claude
 
-- 📄 **文档分享**：将文档分享到团队云盘，支持协同编辑
-- ✏️ **实时协同**：基于 Yjs 的多人实时编辑
-- 🔌 **插件同步**：同步团队插件配置
-- 📊 **日报/月报**：自动生成团队报告
-- 🤖 **AI 总结**：使用 OpenAI/Claude 对文档进行总结
+## Installation
 
-## 安装
+### From Community Plugins (recommended)
 
-### 从社区插件安装（推荐）
+Open **Settings → Community plugins → Browse**, search for **Team Collaboration**, and install.
 
-在 Obsidian 设置 → 社区插件 → 浏览，搜索「Team Collaboration」安装。
+### Manual installation
 
-### 手动安装
-
-将以下文件复制到 `你的vault/.obsidian/plugins/team-collaboration/`：
+Copy these files into `your-vault/.obsidian/plugins/team-collaboration/`:
 
 - `main.js`
 - `manifest.json`
 - `styles.css`
 
-## 使用前提
+## Requirements
 
-本插件需要**自建或使用第三方提供的后端服务**才能使用团队协作功能。服务端需实现相应的 REST API 和 WebSocket 接口。
+This plugin requires a **self-hosted or third-party backend server** for team features. The server must expose REST APIs and WebSocket endpoints for collaboration.
 
-AI 总结功能需在插件设置中配置 **OpenAI** 或 **Claude** 的 API 密钥，由插件直接请求对应厂商接口。
+For AI summaries, configure an **OpenAI** or **Claude** API key in plugin settings. Requests are sent directly to the provider you configure.
 
-## 配置
+## Configuration
 
-| 配置项 | 说明 |
-|--------|------|
-| 服务器地址 | 后端 API 的 base URL（如 `https://your-server.com`） |
-| WebSocket 地址 | 协同编辑 WebSocket 地址（可选，默认从服务器地址推导） |
-| API 密钥 | 登录后获取的 Token |
-| AI 设置 | OpenAI / Claude API 密钥（用于文档总结） |
+| Setting | Description |
+|---------|-------------|
+| Server URL | Base URL of your team backend API (e.g. `https://your-server.com`) |
+| WebSocket URL | WebSocket endpoint for co-editing (optional; derived from server URL if empty) |
+| API key | Authentication token after login |
+| AI settings | OpenAI / Claude API key for document summaries |
 
-## 开发
+## Development
 
 ```bash
 npm install
-npm run dev     # 开发模式 (watch)
-npm run build   # 生产构建
+npm run dev     # watch mode
+npm run build   # production build
 ```
 
----
+## Network usage and privacy
 
-## 网络使用与隐私说明
+To comply with Obsidian developer policies, this section describes network behavior.
 
-为符合 Obsidian 开发者政策，以下说明本插件的网络行为：
+### Network requests
 
-### 网络请求
+1. **Team server (user-configured)**
+   - Purpose: authentication, team management, document CRUD, collaboration sync
+   - When: login, team switch, create/delete/rename documents, opening shared documents
+   - Data: document content and paths in request bodies; user token in headers
 
-本插件会在以下情况下发起网络请求：
+2. **WebSocket**
+   - Purpose: real-time co-editing (Yjs) and team events (document add/remove/rename)
+   - When: opening the team view or a shared document
+   - Data: document content, cursor positions, and collaboration updates
 
-1. **用户配置的团队服务器**
-   - 用途：用户认证、团队管理、文档增删改、协同编辑同步
-   - 时机：登录、切换团队、创建/删除/重命名文档、打开协同文档时
-   - 数据：请求体包含文档内容、路径等业务数据；请求头包含用户 Token
+3. **AI services (OpenAI / Claude)**
+   - Purpose: document summarization
+   - When: user explicitly triggers a summary
+   - Data: selected document content sent to the configured provider
+   - Note: only used when an API key is configured; keys are stored locally in plugin settings
 
-2. **WebSocket 连接**
-   - 用途：实时协同编辑（Yjs）、团队事件推送（文档增删、重命名）
-   - 时机：打开团队视图、打开协同文档时建立连接
-   - 数据：协同编辑的文档内容、光标位置等
+### Telemetry
 
-3. **AI 服务（OpenAI / Claude）**
-   - 用途：文档总结功能
-   - 时机：用户主动触发「总结」时
-   - 数据：用户选中的文档内容发送至对应厂商 API
-   - 说明：仅当用户配置了 API 密钥时才会请求；密钥由用户自行保管，插件不存储或上传
+- This plugin does **not** collect telemetry
+- No usage analytics, crash reports, or behavioral tracking are sent to third parties
+- All network traffic goes to servers explicitly configured by the user
 
-### 遥测 / 数据收集
+### Privacy
 
-- **本插件不收集任何遥测数据**
-- 不向第三方发送使用统计、错误报告或用户行为数据
-- 所有网络请求均指向用户明确配置的服务器地址或 AI 服务商
-
-### 隐私
-
-- 文档内容仅发送至用户配置的团队服务器及（可选）AI 服务商
-- 建议用户自行评估服务端的数据存储与隐私政策
-- 使用 AI 总结时，文档内容会发送至 OpenAI 或 Anthropic，请遵守其服务条款
-
----
+- Document content is sent only to your configured team server and (optionally) AI providers
+- Review your backend's data retention and privacy policies
+- When using AI summaries, content is sent to OpenAI or Anthropic under their terms of service
 
 ## License
 

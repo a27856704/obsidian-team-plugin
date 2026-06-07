@@ -1,4 +1,4 @@
-import { App, Modal, Setting, Notice } from 'obsidian';
+import { App, Modal, Setting } from 'obsidian';
 import type TeamPlugin from '../main';
 import { ConflictInfo } from '../core/Collaboration';
 
@@ -37,11 +37,7 @@ export class ConflictModal extends Modal {
             cls: 'conflict-desc'
         });
 
-        // Info
         const infoDiv = contentEl.createDiv('conflict-info');
-        infoDiv.style.display = 'flex';
-        infoDiv.style.gap = '16px';
-        infoDiv.style.marginBottom = '16px';
 
         const localInfo = infoDiv.createDiv();
         localInfo.createEl('strong', { text: '📄 本地版本' });
@@ -53,37 +49,20 @@ export class ConflictModal extends Modal {
             text: `${this.conflict.serverFile.content.length} 字符 (v${this.conflict.serverFile.version}, 编辑者: ${this.conflict.serverFile.lastEditorName})`
         });
 
-        // Diff display
         const diffContainer = contentEl.createDiv('conflict-diff');
-        diffContainer.style.display = 'flex';
-        diffContainer.style.gap = '8px';
-        diffContainer.style.marginBottom = '16px';
 
-        // Local content
-        const localDiv = diffContainer.createDiv();
-        localDiv.style.flex = '1';
+        const localDiv = diffContainer.createDiv('conflict-diff-panel');
         localDiv.createEl('h4', { text: '本地内容' });
         const localTextarea = localDiv.createEl('textarea', { cls: 'conflict-content' });
         localTextarea.value = this.conflict.localContent;
         localTextarea.readOnly = true;
-        localTextarea.style.width = '100%';
-        localTextarea.style.height = '200px';
-        localTextarea.style.fontFamily = 'monospace';
-        localTextarea.style.fontSize = '12px';
 
-        // Server content
-        const serverDiv = diffContainer.createDiv();
-        serverDiv.style.flex = '1';
+        const serverDiv = diffContainer.createDiv('conflict-diff-panel');
         serverDiv.createEl('h4', { text: '服务器内容' });
         const serverTextarea = serverDiv.createEl('textarea', { cls: 'conflict-content' });
         serverTextarea.value = this.conflict.serverFile.content;
         serverTextarea.readOnly = true;
-        serverTextarea.style.width = '100%';
-        serverTextarea.style.height = '200px';
-        serverTextarea.style.fontFamily = 'monospace';
-        serverTextarea.style.fontSize = '12px';
 
-        // Action buttons
         new Setting(contentEl)
             .addButton(button => button
                 .setButtonText('保留本地版本')

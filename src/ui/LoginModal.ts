@@ -161,27 +161,15 @@ export class LoginModal extends Modal {
 
     private renderCaptchaSection(containerEl: HTMLElement, isRegister: boolean) {
         const captchaDiv = containerEl.createDiv('captcha-section');
-        captchaDiv.style.display = 'flex';
-        captchaDiv.style.alignItems = 'center';
-        captchaDiv.style.gap = '10px';
-        captchaDiv.style.margin = '10px 0';
-        captchaDiv.style.padding = '0 16px';
 
-        const label = captchaDiv.createSpan({ text: '验证码' });
-        label.style.minWidth = '60px';
+        captchaDiv.createSpan({ text: '验证码', cls: 'captcha-label' });
 
-        // Captcha SVG image
         const captchaImg = captchaDiv.createDiv('captcha-image');
-        captchaImg.style.cursor = 'pointer';
-        captchaImg.style.flexShrink = '0';
-        captchaImg.style.border = '1px solid var(--background-modifier-border)';
-        captchaImg.style.borderRadius = '4px';
-        captchaImg.style.overflow = 'hidden';
         if (this.captchaSvg) {
             captchaImg.innerHTML = this.captchaSvg;
         } else {
             captchaImg.textContent = '点击加载';
-            captchaImg.style.padding = '8px';
+            captchaImg.addClass('captcha-image-empty');
         }
         captchaImg.setAttribute('title', '点击刷新验证码');
         captchaImg.addEventListener('click', async () => {
@@ -199,8 +187,6 @@ export class LoginModal extends Modal {
             cls: 'captcha-input',
             attr: { type: 'text', placeholder: '输入验证码' }
         });
-        input.style.width = '100px';
-        input.style.padding = '4px 8px';
 
         if (isRegister && this.regCaptchaInput) {
             input.value = this.regCaptchaInput;
