@@ -1,5 +1,6 @@
 import { requestUrl } from 'obsidian';
 import { BaseAIProvider, SummarizeOptions, ReportOptions, DocumentContent } from './AIProvider';
+import { ClaudeMessageResponse, readResponseJson } from '../utils/api';
 
 export class ClaudeProvider extends BaseAIProvider {
     name = 'Claude';
@@ -59,7 +60,7 @@ export class ClaudeProvider extends BaseAIProvider {
             throw new Error(`Claude API error: ${response.status}`);
         }
 
-        const data = response.json;
-        return data.content[0]?.text || '';
+        const data = readResponseJson<ClaudeMessageResponse>(response);
+        return data.content?.[0]?.text ?? '';
     }
 }

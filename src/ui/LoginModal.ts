@@ -1,5 +1,6 @@
 import { App, Modal, Setting, Notice, requestUrl } from 'obsidian';
 import type TeamPlugin from '../main';
+import { AuthResponse, CaptchaResponse, readResponseJson } from '../utils/api';
 
 export class LoginModal extends Modal {
     private plugin: TeamPlugin;
@@ -44,7 +45,7 @@ export class LoginModal extends Modal {
         try {
             const url = `${this.plugin.settings.serverUrl}/api/auth/captcha`;
             const response = await requestUrl({ url, method: 'GET' });
-            const data = response.json;
+            const data = readResponseJson<CaptchaResponse>(response);
             this.captchaId = data.captchaId;
             this.captchaSvg = data.captchaSvg;
         } catch (e) {
@@ -231,9 +232,9 @@ export class LoginModal extends Modal {
                 }),
             });
 
-            const data = response.json;
+            const data = readResponseJson<AuthResponse>(response);
 
-            if (!data.success) {
+            if (!data.success || !data.token || !data.user) {
                 new Notice(`登录失败: ${data.error || '未知错误'}`);
                 this.captchaInput = '';
                 await this.loadCaptcha();
@@ -254,7 +255,7 @@ export class LoginModal extends Modal {
             if (this.onLoginSuccess) {
                 this.onLoginSuccess();
             }
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error('Login error:', e);
             new Notice('登录请求失败，请检查网络和服务器地址');
         }
@@ -296,9 +297,9 @@ export class LoginModal extends Modal {
                 }),
             });
 
-            const data = response.json;
+            const data = readResponseJson<AuthResponse>(response);
 
-            if (!data.success) {
+            if (!data.success || !data.token || !data.user) {
                 // Show error, reload captcha, STAY on register view
                 new Notice(`注册失败: ${data.error || '未知错误'}`);
                 this.regCaptchaInput = '';
@@ -320,7 +321,7 @@ export class LoginModal extends Modal {
             if (this.onLoginSuccess) {
                 this.onLoginSuccess();
             }
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error('Register error:', e);
             new Notice('注册请求失败，请检查网络和服务器地址');
             // Stay on register view on network error too

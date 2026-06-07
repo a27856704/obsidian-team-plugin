@@ -1,6 +1,8 @@
 import { App, requestUrl, normalizePath } from 'obsidian';
-import { PluginInfo, PluginSyncPackage } from '../types/document';
+import { PluginInfo, PluginManifestJson, PluginSyncPackage } from '../types/document';
 import { TeamPluginSettings } from '../types';
+import { readResponseJson } from '../utils/api';
+import { getEnabledPluginIds, getPluginInstaller, getVaultBasePath } from '../utils/obsidian';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -37,16 +39,14 @@ export class PluginSync {
             throw new Error(`API error: ${response.status}`);
         }
 
-        return response.json as T;
+        return readResponseJson<T>(response);
     }
 
     /**
      * Get plugins directory path
      */
     private getPluginsDir(): string {
-        const adapter = this.app.vault.adapter;
-        // @ts-ignore - accessing internal property
-        const basePath = adapter.basePath || '';
+        const basePath = getVaultBasePath(this.app.vault.adapter);
         return path.join(basePath, '.obsidian', 'plugins');
     }
 
@@ -66,11 +66,9 @@ export class PluginSync {
                 if (fs.existsSync(manifestPath)) {
                     try {
                         const manifestContent = fs.readFileSync(manifestPath, 'utf-8');
-                        const manifest = JSON.parse(manifestContent);
+                        const manifest = JSON.parse(manifestContent) as PluginManifestJson;
 
-                        // Check if plugin is enabled
-                        // @ts-ignore - accessing internal API
-                        const enabledPlugins = this.app.plugins?.enabledPlugins || new Set();
+                        const enabledPlugins = getEnabledPluginIds(this.app);
 
                         // Check if plugin has settings
                         const dataPath = path.join(pluginsDir, dir, 'data.json');
@@ -171,9 +169,7 @@ export class PluginSync {
             }
 
             try {
-                // Try to install from community plugins
-                // @ts-ignore - accessing internal API
-                const communityPlugins = this.app.plugins;
+                const communityPlugins = getPluginInstaller(this.app);
 
                 if (communityPlugins?.installPlugin) {
                     await communityPlugins.installPlugin(plugin.id);

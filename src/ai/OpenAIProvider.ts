@@ -1,5 +1,6 @@
 import { requestUrl } from 'obsidian';
 import { BaseAIProvider, SummarizeOptions, ReportOptions, DocumentContent } from './AIProvider';
+import { OpenAIChatResponse, readResponseJson } from '../utils/api';
 
 export class OpenAIProvider extends BaseAIProvider {
     name = 'OpenAI';
@@ -62,7 +63,7 @@ export class OpenAIProvider extends BaseAIProvider {
             throw new Error(`OpenAI API error: ${response.status}`);
         }
 
-        const data = response.json;
-        return data.choices[0]?.message?.content || '';
+        const data = readResponseJson<OpenAIChatResponse>(response);
+        return data.choices?.[0]?.message?.content ?? '';
     }
 }

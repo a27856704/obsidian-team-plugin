@@ -1,5 +1,6 @@
-import { App, TFile, requestUrl, Notice } from 'obsidian';
+import { App, TFile, requestUrl } from 'obsidian';
 import { TeamPluginSettings } from '../types';
+import { getErrorMessage, readResponseJson } from '../utils/api';
 
 export interface CollabFileMeta {
     id: string;
@@ -59,10 +60,10 @@ export class Collaboration {
                 method: 'GET',
                 headers: this.getHeaders(),
             });
-            return response.json as CollabFileMeta[];
-        } catch (e: any) {
+            return readResponseJson<CollabFileMeta[]>(response);
+        } catch (e: unknown) {
             console.error('[Collab] listFiles error:', e);
-            throw new Error(`获取文件列表失败: ${e.message}`);
+            throw new Error(`获取文件列表失败: ${getErrorMessage(e)}`);
         }
     }
 
@@ -76,13 +77,13 @@ export class Collaboration {
                 method: 'GET',
                 headers: this.getHeaders(),
             });
-            const file = response.json as CollabFile;
+            const file = readResponseJson<CollabFile>(response);
             // Track synced version
             this.syncedVersions.set(file.path, file.version);
             return file;
-        } catch (e: any) {
+        } catch (e: unknown) {
             console.error('[Collab] pullFile error:', e);
-            throw new Error(`下载文件失败: ${e.message}`);
+            throw new Error(`下载文件失败: ${getErrorMessage(e)}`);
         }
     }
 
@@ -105,17 +106,17 @@ export class Collaboration {
                     clientVersion,
                 }),
             });
-            const result = response.json as CollabFileMeta;
+            const result = readResponseJson<CollabFileMeta>(response);
             this.syncedVersions.set(file.path, result.version);
             return result;
-        } catch (e: any) {
+        } catch (e: unknown) {
+            const message = getErrorMessage(e);
             // Check if this is a 409 conflict
-            if (e.message?.includes('409')) {
-                // requestUrl throws on non-2xx, try to parse conflict data from the error
+            if (message.includes('409')) {
                 throw new Error('VERSION_CONFLICT');
             }
             console.error('[Collab] pushFile error:', e);
-            throw new Error(`上传文件失败: ${e.message}`);
+            throw new Error(`上传文件失败: ${message}`);
         }
     }
 
@@ -129,8 +130,8 @@ export class Collaboration {
         try {
             await this.pushFile(teamId, file);
             return { status: 'synced' };
-        } catch (e: any) {
-            if (e.message === 'VERSION_CONFLICT') {
+        } catch (e: unknown) {
+            if (getErrorMessage(e) === 'VERSION_CONFLICT') {
                 // Fetch latest server file for conflict resolution
                 const files = await this.listFiles(teamId);
                 const serverMeta = files.find(f => f.path === file.path);
@@ -193,11 +194,11 @@ export class Collaboration {
                     // No clientVersion → no conflict check
                 }),
             });
-            const result = response.json as CollabFileMeta;
+            const result = readResponseJson<CollabFileMeta>(response);
             this.syncedVersions.set(file.path, result.version);
             return result;
-        } catch (e: any) {
-            throw new Error(`强制推送失败: ${e.message}`);
+        } catch (e: unknown) {
+            throw new Error(`强制推送失败: ${getErrorMessage(e)}`);
         }
     }
 
@@ -212,8 +213,8 @@ export class Collaboration {
                 headers: this.getHeaders(),
             });
             // Clean up local tracking
-        } catch (e: any) {
-            throw new Error(`删除失败: ${e.message}`);
+        } catch (e: unknown) {
+            throw new Error(`删除失败: ${getErrorMessage(e)}`);
         }
     }
 }

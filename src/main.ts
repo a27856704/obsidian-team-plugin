@@ -1,5 +1,6 @@
 import { Plugin, TFile, TAbstractFile, Notice, WorkspaceLeaf } from 'obsidian';
 import { TeamPluginSettings, DEFAULT_SETTINGS } from './types';
+import { JwtPayload } from './utils/api';
 import { TeamPluginSettingTab } from './settings';
 import { TeamManager, PluginSync, Collaboration, CollabEditor } from './core';
 import { Summarizer } from './ai';
@@ -70,7 +71,8 @@ export default class TeamPlugin extends Plugin {
     }
 
     async loadSettings() {
-        this.settings = Object.assign({}, DEFAULT_SETTINGS, await this.loadData());
+        const saved = await this.loadData() as Partial<TeamPluginSettings> | null;
+        this.settings = Object.assign({}, DEFAULT_SETTINGS, saved ?? {});
     }
 
     /**
@@ -82,7 +84,7 @@ export default class TeamPlugin extends Plugin {
         try {
             const parts = token.split('.');
             if (parts.length !== 3) return;
-            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+            const payload = JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/'))) as JwtPayload;
             if (payload.exp && payload.exp * 1000 < Date.now()) {
                 console.warn('[Auth] JWT 已过期，自动登出');
                 this.handleAuthExpired();

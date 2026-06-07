@@ -1,13 +1,8 @@
 import { App, Modal, Notice } from 'obsidian';
 import * as Y from 'yjs';
 import TeamPlugin from '../main';
-
-interface DocumentHistoryEntry {
-    id: string;
-    version: number;
-    savedByName: string;
-    createdAt: string | number;
-}
+import { DocumentHistoryEntry } from '../types/document';
+import { getErrorMessage } from '../utils/api';
 
 export class HistoryModal extends Modal {
     plugin: TeamPlugin;
@@ -56,8 +51,7 @@ export class HistoryModal extends Modal {
                 restoreBtn.onclick = () => this.restoreHistory(h.id);
             });
         } catch (e: unknown) {
-            const message = e instanceof Error ? e.message : String(e);
-            loadingEl.innerText = `加载失败: ${message}`;
+            loadingEl.innerText = `加载失败: ${getErrorMessage(e)}`;
         }
     }
 
@@ -90,8 +84,7 @@ export class HistoryModal extends Modal {
             new Notice(`✅ 已成功恢复到版本 v${snapshot.version}`);
             this.close();
         } catch (e: unknown) {
-            const message = e instanceof Error ? e.message : String(e);
-            new Notice(`还原失败: ${message}`);
+            new Notice(`还原失败: ${getErrorMessage(e)}`);
         }
     }
 }

@@ -1,6 +1,8 @@
 import { App, requestUrl } from 'obsidian';
 import { Team, TeamMember, TeamRole, TeamInvitation, TeamSettings } from '../types/team';
 import { TeamPluginSettings } from '../types';
+import { DocumentHistoryEntry, DocumentHistorySnapshot, TeamDocument } from '../types/document';
+import { extractApiError, getErrorMessage, readResponseJson } from '../utils/api';
 
 export class TeamManager {
     private app: App;
@@ -46,16 +48,8 @@ export class TeamManager {
             });
 
             if (response.status >= 400) {
-                let msg = `请求失败 (${response.status})`;
-                try {
-                    const resBody = response.json;
-                    if (resBody && typeof (resBody as any).error === 'string') {
-                        msg = (resBody as any).error;
-                    }
-                } catch {
-                    // ignore
-                }
-                throw new Error(msg);
+                const apiError = extractApiError(response.json);
+                throw new Error(apiError ?? `请求失败 (${response.status})`);
             }
 
             // 如果服务端返回 204 No Content，或者响应体本身为空，则不必尝试解析 JSON
@@ -63,12 +57,10 @@ export class TeamManager {
                 return {} as T;
             }
 
-            return response.json as T;
-        } catch (error: any) {
+            return readResponseJson<T>(response);
+        } catch (error: unknown) {
             console.error(`[TeamManager] ${method} ${url} failed:`, error);
-            // Try to extract server error message
-            const msg = error?.message || String(error);
-            throw new Error(msg);
+            throw new Error(getErrorMessage(error));
         }
     }
 
@@ -212,15 +204,15 @@ export class TeamManager {
     /**
      * Get all documents in the team drive
      */
-    async getTeamDocuments(teamId: string): Promise<import('../types').TeamDocument[]> {
-        return await this.request<import('../types').TeamDocument[]>(`/api/collab/${teamId}/files`, 'GET');
+    async getTeamDocuments(teamId: string): Promise<TeamDocument[]> {
+        return await this.request<TeamDocument[]>(`/api/collab/${teamId}/files`, 'GET');
     }
 
     /**
      * Create a new document in the team drive
      */
-    async createTeamDocument(teamId: string, path: string, content: string = ''): Promise<import('../types').TeamDocument> {
-        return await this.request<import('../types').TeamDocument>(`/api/collab/${teamId}/files`, 'POST', {
+    async createTeamDocument(teamId: string, path: string, content: string = ''): Promise<TeamDocument> {
+        return await this.request<TeamDocument>(`/api/collab/${teamId}/files`, 'POST', {
             path,
             content
         });
@@ -229,8 +221,8 @@ export class TeamManager {
     /**
      * Rename a document in the team drive
      */
-    async renameTeamDocument(teamId: string, documentId: string, newPath: string): Promise<import('../types').TeamDocument> {
-        return await this.request<import('../types').TeamDocument>(`/api/collab/${teamId}/files/${documentId}`, 'PATCH', {
+    async renameTeamDocument(teamId: string, documentId: string, newPath: string): Promise<TeamDocument> {
+        return await this.request<TeamDocument>(`/api/collab/${teamId}/files/${documentId}`, 'PATCH', {
             path: newPath,
         });
     }
@@ -245,14 +237,14 @@ export class TeamManager {
     /**
      * Get histories of a document
      */
-    async getTeamDocumentHistories(teamId: string, documentId: string): Promise<any[]> {
-        return await this.request<any[]>(`/api/collab/${teamId}/files/${documentId}/history`, 'GET');
+    async getTeamDocumentHistories(teamId: string, documentId: string): Promise<DocumentHistoryEntry[]> {
+        return await this.request<DocumentHistoryEntry[]>(`/api/collab/${teamId}/files/${documentId}/history`, 'GET');
     }
 
     /**
      * Get a specific history snapshot full content
      */
-    async getTeamDocumentHistorySnapshot(teamId: string, documentId: string, historyId: string): Promise<{ id: string, version: number, ydoc: string, savedByName: string, createdAt: number }> {
-        return await this.request<any>(`/api/collab/${teamId}/files/${documentId}/history/${historyId}`, 'GET');
+    async getTeamDocumentHistorySnapshot(teamId: string, documentId: string, historyId: string): Promise<DocumentHistorySnapshot> {
+        return await this.request<DocumentHistorySnapshot>(`/api/collab/${teamId}/files/${documentId}/history/${historyId}`, 'GET');
     }
 }

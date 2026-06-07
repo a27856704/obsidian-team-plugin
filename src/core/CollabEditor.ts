@@ -5,13 +5,14 @@
  * 实现飞书/腾讯文档式的实时多人协同编辑
  */
 
-import { App, MarkdownView, Notice, TFile, Plugin } from 'obsidian';
+import { App, Notice, TFile, Plugin } from 'obsidian';
 import { TeamPluginSettings } from '../types';
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
 import { yCollab } from 'y-codemirror.next';
 import { EditorView } from '@codemirror/view';
 import { Compartment } from '@codemirror/state';
+import { getMarkdownEditorView } from '../utils/obsidian';
 
 /** 协同会话信息 */
 interface CollabSession {
@@ -127,7 +128,7 @@ export class CollabEditor {
                 provider.once('sync', () => resolve('sync_event'));
             }
             // 5秒超时
-            setTimeout(() => resolve('timeout'), 5000);
+            window.setTimeout(() => resolve('timeout'), 5000);
         });
         console.log('[CollabEditor] 同步结果:', syncResult, ', ytext.length=', ytext.length, ', provider.wsconnected=', provider.wsconnected);
 
@@ -144,7 +145,7 @@ export class CollabEditor {
         }
 
         // 等待编辑器完全渲染就绪（Obsidian 的 file-open 事件触发时 MarkdownView 可能还没初始化完成）
-        await new Promise(r => setTimeout(r, 600));
+        await new Promise<void>(resolve => window.setTimeout(resolve, 600));
 
         console.log('[CollabEditor] 开始绑定编辑器, ytext.length=', ytext.length, ', provider.synced=', provider.synced);
 
@@ -191,7 +192,7 @@ export class CollabEditor {
         const ytext = ydoc.getText('codemirror');
         const undoManager = new Y.UndoManager(ytext);
         let isCleaned = false;
-        let retryTimer: ReturnType<typeof setTimeout> | null = null;
+        let retryTimer: number | null = null;
 
         const doInject = (editorView: EditorView) => {
             if (isCleaned) return;
@@ -230,18 +231,18 @@ export class CollabEditor {
                 if (ev) {
                     doInject(ev);
                 } else if (retries < maxRetries) {
-                    retryTimer = setTimeout(poll, 300);
+                    retryTimer = window.setTimeout(poll, 300);
                 } else {
                     console.error('[CollabEditor] 重试 ' + maxRetries + ' 次后仍无法获取 EditorView');
                 }
             };
-            retryTimer = setTimeout(poll, 300);
+            retryTimer = window.setTimeout(poll, 300);
         }
 
         // 返回清理函数
         return () => {
             isCleaned = true;
-            if (retryTimer) clearTimeout(retryTimer);
+            if (retryTimer) window.clearTimeout(retryTimer);
             try {
                 // 找到当前活跃的 EditorView 来卸载扩展
                 const ev = this.getEditorView(file);
@@ -250,7 +251,7 @@ export class CollabEditor {
                         effects: this.collabCompartment.reconfigure([])
                     });
                 }
-            } catch (err) {
+            } catch {
                 // Ignore if view is already destroyed
             }
             undoManager.destroy();
@@ -261,17 +262,7 @@ export class CollabEditor {
      * 获取文件对应的 CodeMirror 6 EditorView 实例
      */
     private getEditorView(file: TFile): EditorView | null {
-        // 打开文件
-        const leaves = this.app.workspace.getLeavesOfType('markdown');
-        for (const leaf of leaves) {
-            const view = leaf.view;
-            if (view instanceof MarkdownView && view.file?.path === file.path) {
-                // 访问 Obsidian 内部的 CodeMirror 6 EditorView
-                const editor = view.editor;
-                return (editor as any).cm as EditorView | null;
-            }
-        }
-        return null;
+        return getMarkdownEditorView(file, this.app);
     }
 
     /**

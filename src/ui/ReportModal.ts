@@ -1,4 +1,4 @@
-import { App, Modal, Setting, Notice, moment } from 'obsidian';
+import { App, Modal, Setting, Notice, TFile, moment } from 'obsidian';
 import { TeamPluginSettings, ReportType } from '../types';
 import { DailyReport } from '../reports/DailyReport';
 import { MonthlyReport } from '../reports/MonthlyReport';
@@ -162,7 +162,7 @@ export class ReportModal extends Modal {
             // Create file
             const existingFile = this.app.vault.getAbstractFileByPath(filePath);
             if (existingFile) {
-                await this.app.vault.modify(existingFile as any, content);
+                await this.app.vault.modify(existingFile as TFile, content);
             } else {
                 await this.app.vault.create(filePath, content);
             }

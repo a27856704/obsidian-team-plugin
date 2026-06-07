@@ -55,3 +55,24 @@ export interface PluginSyncPackage {
     settings: Record<string, unknown>;
     timestamp: number;
 }
+
+export interface PluginManifestJson {
+    id: string;
+    name: string;
+    version: string;
+}
+
+export interface DocumentHistoryEntry {
+    id: string;
+    version: number;
+    savedByName: string;
+    createdAt: string | number;
+}
+
+export interface DocumentHistorySnapshot {
+    id: string;
+    version: number;
+    ydoc: string;
+    savedByName: string;
+    createdAt: number;
+}

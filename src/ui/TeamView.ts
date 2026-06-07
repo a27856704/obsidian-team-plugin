@@ -1,7 +1,8 @@
-import { ItemView, WorkspaceLeaf, Menu, Notice, requestUrl, TFile, MarkdownView, FuzzySuggestModal } from 'obsidian';
+import { App, ItemView, WorkspaceLeaf, Menu, Notice, requestUrl, TFile, MarkdownView, FuzzySuggestModal } from 'obsidian';
 import type TeamPlugin from '../main';
 import { Team, TeamMember } from '../types/team';
 import { TeamDocument } from '../types/document';
+import { getErrorMessage, readResponseJson, TeamDriveChangedMessage } from '../utils/api';
 import { CreateTeamModal } from './CreateTeamModal';
 import { InviteMemberModal } from './InviteMemberModal';
 import { LoginModal } from './LoginModal';
@@ -55,7 +56,7 @@ export class TeamView extends ItemView {
         return base;
     }
 
-    private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    private reconnectTimer: number | null = null;
 
     private logTeamWs(action: string, detail?: Record<string, unknown>): void {
         const entry = { time: new Date().toISOString(), interface: 'ws/team', action, ...detail };
@@ -93,10 +94,10 @@ export class TeamView extends ItemView {
                 };
                 ws.onmessage = async (ev) => {
                     try {
-                        const data = JSON.parse(ev.data as string);
-                        if (data?.type === 'team_drive_changed') {
-                            const deleted: string[] = data.deleted ?? [];
-                            const renamed: Array<{ from: string; to: string }> = data.renamed ?? [];
+                        const data = JSON.parse(ev.data as string) as TeamDriveChangedMessage;
+                        if (data.type === 'team_drive_changed') {
+                            const deleted = data.deleted ?? [];
+                            const renamed = data.renamed ?? [];
                             this.logTeamWs('message', { type: 'team_drive_changed', deleted, renamed });
                             for (const path of deleted) {
                                 const file = this.app.vault.getAbstractFileByPath(path);
@@ -160,7 +161,7 @@ export class TeamView extends ItemView {
     private scheduleReconnect(): void {
         if (this.reconnectTimer || !this.currentTeam || !this.plugin.settings.apiKey) return;
         this.logTeamWs('reconnect_schedule', { delayMs: 3000 });
-        this.reconnectTimer = setTimeout(() => {
+        this.reconnectTimer = window.setTimeout(() => {
             this.reconnectTimer = null;
             this.connectTeamWebSocket();
         }, 3000);
@@ -169,7 +170,7 @@ export class TeamView extends ItemView {
     /** 断开团队事件 WebSocket */
     private disconnectTeamWebSocket(): void {
         if (this.reconnectTimer) {
-            clearTimeout(this.reconnectTimer);
+            window.clearTimeout(this.reconnectTimer);
             this.reconnectTimer = null;
         }
         this.isDisconnectingWs = true;
@@ -179,7 +180,7 @@ export class TeamView extends ItemView {
             this.teamWs.close();
             this.teamWs = null;
         }
-        setTimeout(() => { this.isDisconnectingWs = false; }, 0);
+        window.setTimeout(() => { this.isDisconnectingWs = false; }, 0);
     }
 
     async render() {
@@ -260,7 +261,8 @@ export class TeamView extends ItemView {
                     'X-User-Id': this.plugin.settings.userId || '',
                 },
             });
-            return response.status === 200 && !!response.json?.id;
+            const user = readResponseJson<{ id?: string }>(response);
+            return response.status === 200 && !!user.id;
         } catch {
             return false;
         }
@@ -447,8 +449,8 @@ export class TeamView extends ItemView {
                 await this.plugin.teamManager.createTeamDocument(this.currentTeam!.id, fullPath);
                 new Notice(`已在云端创建文档: ${filename}`);
                 this.render(); // refresh list
-            } catch (e: any) {
-                new Notice(`创建云文档失败: ${e.message}`);
+            } catch (e: unknown) {
+                new Notice(`创建云文档失败: ${getErrorMessage(e)}`);
             }
         });
 
@@ -522,8 +524,8 @@ export class TeamView extends ItemView {
                             }
                             new Notice('已从云端删除此文件');
                             this.render();
-                        } catch (err: any) {
-                            new Notice(err?.message ?? `删除失败: ${err}`);
+                        } catch (err: unknown) {
+                            new Notice(getErrorMessage(err) || '删除失败');
                         }
                     });
 
@@ -648,8 +650,8 @@ export class TeamView extends ItemView {
 
                 new Notice(`✅ 已将「${file.name}」上传到团队云盘`);
                 await this.render();
-            } catch (e: any) {
-                new Notice(`上传失败: ${e.message}`);
+            } catch (e: unknown) {
+                new Notice(`上传失败: ${getErrorMessage(e)}`);
             }
         });
         modal.open();
@@ -663,7 +665,7 @@ class LocalFileSuggestModal extends FuzzySuggestModal<TFile> {
     private files: TFile[];
     private onChoose: (file: TFile) => void;
 
-    constructor(app: any, files: TFile[], onChoose: (file: TFile) => void) {
+    constructor(app: App, files: TFile[], onChoose: (file: TFile) => void) {
         super(app);
         this.files = files;
         this.onChoose = onChoose;

@@ -2,7 +2,7 @@ import { App, TFile } from 'obsidian';
 import { AIProvider, DocumentContent, DocumentSummary, ReportStats, SummarizeOptions, ReportOptions } from './AIProvider';
 import { OpenAIProvider } from './OpenAIProvider';
 import { ClaudeProvider } from './ClaudeProvider';
-import { AIProviderType, TeamPluginSettings } from '../types';
+import { TeamPluginSettings } from '../types';
 
 /** Progress callback: (current, total, currentDocTitle) */
 export type ProgressCallback = (current: number, total: number, docTitle?: string) => void;
