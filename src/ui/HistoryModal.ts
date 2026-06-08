@@ -21,7 +21,8 @@ class ConfirmRestoreModal extends Modal {
         new Setting(contentEl)
             .addButton(button => button
                 .setButtonText('确定还原')
-                .setWarning()
+                .setDestructive()
+                .setCta()
                 .onClick(() => {
                     this.onConfirm();
                     this.close();

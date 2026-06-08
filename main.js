@@ -12739,7 +12739,7 @@ var ConfirmRestoreModal = class extends import_obsidian17.Modal {
     contentEl.empty();
     contentEl.createEl("p", { text: this.message });
     new import_obsidian17.Setting(contentEl).addButton(
-      (button) => button.setButtonText("\u786E\u5B9A\u8FD8\u539F").setWarning().onClick(() => {
+      (button) => button.setButtonText("\u786E\u5B9A\u8FD8\u539F").setDestructive().setCta().onClick(() => {
         this.onConfirm();
         this.close();
       })
