@@ -1,6 +1,10 @@
 # Team Collaboration
 
-Obsidian plugin for team collaboration: shared vault documents, real-time co-editing, plugin sync, daily/monthly reports, and AI-powered summaries.
+Shared vault documents, real-time co-editing, plugin sync, daily/monthly reports, and AI-powered summaries for Obsidian teams.
+
+## Source code
+
+TypeScript source lives in the [`src/`](src/) directory of this repository. Each GitHub Release also includes `source.zip` with `src/`, `tsconfig.json`, `package.json`, and `esbuild.config.mjs`.
 
 ## Features
 
