@@ -4,7 +4,7 @@ Shared vault documents, real-time co-editing, plugin sync, daily/monthly reports
 
 ## Source code
 
-TypeScript source lives in the [`src/`](src/) directory of this repository. Each GitHub Release also includes `source.zip` with `src/`, `tsconfig.json`, `package.json`, and `esbuild.config.mjs`.
+TypeScript source lives in the [`src/`](src/) directory of this repository, with `package.json`, `tsconfig.json`, and `esbuild.config.mjs` at the repo root.
 
 ## Features
 
